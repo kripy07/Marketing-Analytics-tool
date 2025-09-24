@@ -2,7 +2,10 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { MetricCard } from "@/components/MetricCard";
 import { CampaignCard } from "@/components/CampaignCard";
 import { ComparisonChart } from "@/components/ComparisonChart";
+import { FilterPanel } from "@/components/FilterPanel";
+import { ExportPanel } from "@/components/ExportPanel";
 import { mockCampaigns, comparisonData, weeklyPerformance, budgetUtilization } from "@/data/mockData";
+import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import { 
   DollarSign, 
   Target, 
@@ -13,21 +16,88 @@ import {
   ShoppingCart,
   BarChart3
 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { DateRange } from "react-day-picker";
 
 const Index = () => {
-  // Calculate summary metrics from mock data
-  const totalBudget = mockCampaigns.reduce((sum, campaign) => sum + campaign.budget, 0);
-  const totalSpent = mockCampaigns.reduce((sum, campaign) => sum + campaign.spent, 0);
-  const totalConversions = mockCampaigns.reduce((sum, campaign) => sum + campaign.conversions, 0);
-  const totalClicks = mockCampaigns.reduce((sum, campaign) => sum + campaign.clicks, 0);
+  // Filter states
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedChannel, setSelectedChannel] = useState("all");
+
+  // Filter campaigns based on selected filters
+  const filteredCampaigns = useMemo(() => {
+    return mockCampaigns.filter(campaign => {
+      // Status filter
+      if (selectedStatus !== "all" && campaign.status !== selectedStatus) {
+        return false;
+      }
+
+      // Date range filter (simplified - in real app you'd check actual dates)
+      if (dateRange?.from && dateRange?.to) {
+        // For demo purposes, we'll just show all campaigns if date range is selected
+        // In real implementation, you'd filter by campaign.startDate and campaign.endDate
+      }
+
+      return true;
+    });
+  }, [selectedStatus, selectedChannel, dateRange]);
+
+  // Calculate metrics from filtered campaigns
+  const totalBudget = filteredCampaigns.reduce((sum, campaign) => sum + campaign.budget, 0);
+  const totalSpent = filteredCampaigns.reduce((sum, campaign) => sum + campaign.spent, 0);
+  const totalConversions = filteredCampaigns.reduce((sum, campaign) => sum + campaign.conversions, 0);
+  const totalClicks = filteredCampaigns.reduce((sum, campaign) => sum + campaign.clicks, 0);
   
-  const budgetUtilizationPercent = (totalSpent / totalBudget) * 100;
-  const avgConversionRate = (totalConversions / totalClicks) * 100;
+  const budgetUtilizationPercent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+  const avgConversionRate = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
+
+  const activeFiltersCount = [
+    dateRange?.from ? 1 : 0,
+    selectedStatus !== "all" ? 1 : 0,
+    selectedChannel !== "all" ? 1 : 0
+  ].reduce((sum, filter) => sum + filter, 0);
+
+  const handleClearFilters = () => {
+    setDateRange(undefined);
+    setSelectedStatus("all");
+    setSelectedChannel("all");
+  };
+
+  const handleExport = (format: string, fields: string[]) => {
+    if (format === "csv") {
+      exportToCSV(filteredCampaigns, fields);
+    } else if (format === "pdf") {
+      exportToPDF(filteredCampaigns, fields);
+    } else {
+      // For XLSX, you'd need a library like SheetJS
+      alert("Excel export coming soon! Use CSV for now.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-8">
         <DashboardHeader />
+
+        {/* Filters and Export */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <FilterPanel
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              selectedStatus={selectedStatus}
+              setSelectedStatus={setSelectedStatus}
+              selectedChannel={selectedChannel}
+              setSelectedChannel={setSelectedChannel}
+              onClearFilters={handleClearFilters}
+              activeFiltersCount={activeFiltersCount}
+            />
+          </div>
+          <div>
+            <ExportPanel onExport={handleExport} />
+          </div>
+        </div>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -121,12 +191,25 @@ const Index = () => {
 
         {/* Campaign Cards */}
         <div>
-          <h2 className="text-2xl font-bold mb-6">Active Campaigns</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">
+              {selectedStatus === "all" ? "All Campaigns" : `${selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)} Campaigns`}
+            </h2>
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredCampaigns.length} of {mockCampaigns.length} campaigns
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockCampaigns.map((campaign, index) => (
+            {filteredCampaigns.map((campaign, index) => (
               <CampaignCard key={index} {...campaign} />
             ))}
           </div>
+          {filteredCampaigns.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-lg mb-2">No campaigns match your filters</p>
+              <p>Try adjusting your filter criteria</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
