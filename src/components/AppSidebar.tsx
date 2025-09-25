@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation, useParams } from "react-router-dom";
+import { NavLink, useLocation, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProject } from "@/contexts/ProjectContext";
 import {
@@ -12,7 +12,9 @@ import {
   Bell,
   LogOut,
   ChevronDown,
-  Home
+  Home,
+  Check,
+  Building
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +39,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // Global navigation items (when not in a project)
 const globalNavigationItems = [
@@ -92,9 +107,11 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
-  const { currentProject } = useProject();
+  const { currentProject, projects } = useProject();
   const currentPath = location.pathname;
+  const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false);
 
   // Determine if we're in a project context
   const isInProject = Boolean(projectId && currentProject);
@@ -135,14 +152,68 @@ export function AppSidebar() {
     <Sidebar className={state === "collapsed" ? "w-16" : "w-64"} collapsible="icon">
       <SidebarHeader className="border-b border-border p-4">
         {state !== "collapsed" && (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-white" />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Analytics Pro</h2>
+                <p className="text-xs text-muted-foreground">Marketing Dashboard</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-bold text-lg">Analytics Pro</h2>
-              <p className="text-xs text-muted-foreground">Marketing Dashboard</p>
-            </div>
+            
+            {/* Project Switcher */}
+            {isInProject && currentProject && (
+              <Popover open={projectSwitcherOpen} onOpenChange={setProjectSwitcherOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={projectSwitcherOpen}
+                    className="w-full justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4" />
+                      <span className="truncate">{currentProject.name}</span>
+                    </div>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search projects..." />
+                    <CommandList>
+                      <CommandEmpty>No project found.</CommandEmpty>
+                      <CommandGroup>
+                        {projects.map((project) => (
+                          <CommandItem
+                            key={project.id}
+                            value={project.name}
+                            onSelect={() => {
+                              navigate(`/project/${project.id}/dashboard`);
+                              setProjectSwitcherOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${
+                                currentProject.id === project.id ? "opacity-100" : "opacity-0"
+                              }`}
+                            />
+                            <div className="flex flex-col">
+                              <span>{project.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {project.type} • {project.campaignCount} campaigns
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         )}
         {state === "collapsed" && (

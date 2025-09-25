@@ -10,6 +10,7 @@ import Homepage from "./pages/Homepage";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import Campaigns from "./pages/Campaigns";
 import Settings from "./pages/Settings";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import ProjectLayout from "./components/ProjectLayout";
 
@@ -28,7 +29,7 @@ const App = () => (
               <Route path="/" element={<Layout><Homepage /></Layout>} />
               
               {/* Global admin routes */}
-              <Route path="/users" element={<Layout><Settings /></Layout>} />
+              <Route path="/users" element={<Layout><UserManagement /></Layout>} />
               <Route path="/settings" element={<Layout><Settings /></Layout>} />
               
               {/* Project-specific routes */}
