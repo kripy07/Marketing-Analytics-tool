@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import {
   BarChart3,
   Settings,
@@ -10,7 +11,8 @@ import {
   FileText,
   Bell,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Home
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,29 +38,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navigationItems = [
+// Global navigation items (when not in a project)
+const globalNavigationItems = [
   {
-    title: "Dashboard",
+    title: "All Projects",
     url: "/",
-    icon: BarChart3,
-    adminOnly: false
-  },
-  {
-    title: "Campaigns",
-    url: "/campaigns",
-    icon: Target,
-    adminOnly: false
-  },
-  {
-    title: "Analytics",
-    url: "/analytics",
-    icon: TrendingUp,
-    adminOnly: false
-  },
-  {
-    title: "Reports",
-    url: "/reports",
-    icon: FileText,
+    icon: Home,
     adminOnly: false
   },
   {
@@ -75,17 +60,66 @@ const navigationItems = [
   }
 ];
 
+// Project-specific navigation items
+const projectNavigationItems = [
+  {
+    title: "Dashboard",
+    url: "dashboard",
+    icon: BarChart3,
+    adminOnly: false
+  },
+  {
+    title: "Campaigns",
+    url: "campaigns",
+    icon: Target,
+    adminOnly: false
+  },
+  {
+    title: "Analytics",
+    url: "analytics",
+    icon: TrendingUp,
+    adminOnly: false
+  },
+  {
+    title: "Reports",
+    url: "reports",
+    icon: FileText,
+    adminOnly: false
+  }
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const { projectId } = useParams();
   const { user, isAdmin, logout } = useAuth();
+  const { currentProject } = useProject();
   const currentPath = location.pathname;
 
+  // Determine if we're in a project context
+  const isInProject = Boolean(projectId && currentProject);
+  
+  // Get appropriate navigation items
+  const navigationItems = isInProject ? projectNavigationItems : globalNavigationItems;
+  
   const isActive = (path: string) => {
-    if (path === "/") {
-      return currentPath === "/";
+    if (isInProject) {
+      // For project routes, check if the current path ends with the item path
+      return currentPath.includes(`/project/${projectId}/${path}`);
+    } else {
+      // For global routes
+      if (path === "/") {
+        return currentPath === "/";
+      }
+      return currentPath.startsWith(path);
     }
-    return currentPath.startsWith(path);
+  };
+
+  const buildUrl = (path: string) => {
+    if (isInProject) {
+      return `/project/${projectId}/${path}`;
+    }
+    return path;
   };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
@@ -127,8 +161,8 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 
-                      to={item.url} 
-                      end={item.url === "/"} 
+                      to={buildUrl(item.url)} 
+                      end={item.url === "/" || item.url === "dashboard"} 
                       className={({ isActive }) => getNavCls({ isActive })}
                     >
                       <item.icon className="h-4 w-4" />
