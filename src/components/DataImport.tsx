@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { QuickDataEntry } from "./QuickDataEntry";
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -13,17 +16,28 @@ import {
   Database, 
   Download,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from "lucide-react";
 
 export function DataImport() {
   const { toast } = useToast();
+  const { canEdit } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [manualData, setManualData] = useState('');
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
+    
+    if (!canEdit) {
+      toast({
+        title: "Access Denied",
+        description: "Admin access required to upload files",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setUploading(true);
     
@@ -39,6 +53,15 @@ export function DataImport() {
   };
 
   const handleGoogleSheetsImport = () => {
+    if (!canEdit) {
+      toast({
+        title: "Access Denied",
+        description: "Admin access required to connect Google Sheets",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!googleSheetsUrl) {
       toast({
         title: "Error",
@@ -55,6 +78,15 @@ export function DataImport() {
   };
 
   const handleManualDataSave = () => {
+    if (!canEdit) {
+      toast({
+        title: "Access Denied",
+        description: "Admin access required to save manual data",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!manualData.trim()) {
       toast({
         title: "Error", 
@@ -79,23 +111,34 @@ export function DataImport() {
         <p className="text-muted-foreground">
           Import campaign data from various sources to get started quickly
         </p>
+        {!canEdit && (
+          <Alert className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You have viewer access only. Contact your administrator to import or modify data.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
+
+      {/* Quick Data Entry */}
+      <QuickDataEntry />
 
       <Tabs defaultValue="excel" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="excel" className="flex items-center gap-2">
+          <TabsTrigger value="excel" className="flex items-center gap-2" disabled={!canEdit}>
             <FileSpreadsheet className="h-4 w-4" />
             Excel/CSV
           </TabsTrigger>
-          <TabsTrigger value="sheets" className="flex items-center gap-2">
+          <TabsTrigger value="sheets" className="flex items-center gap-2" disabled={!canEdit}>
             <Database className="h-4 w-4" />
             Google Sheets
           </TabsTrigger>
-          <TabsTrigger value="manual" className="flex items-center gap-2">
+          <TabsTrigger value="manual" className="flex items-center gap-2" disabled={!canEdit}>
             <FileText className="h-4 w-4" />
             Manual Entry
           </TabsTrigger>
-          <TabsTrigger value="document" className="flex items-center gap-2">
+          <TabsTrigger value="document" className="flex items-center gap-2" disabled={!canEdit}>
             <Upload className="h-4 w-4" />
             Document
           </TabsTrigger>

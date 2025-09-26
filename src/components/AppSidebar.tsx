@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useLocation, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProject } from "@/contexts/ProjectContext";
+import { UserSwitcher } from "./UserSwitcher";
 import {
   BarChart3,
   Settings,
@@ -108,7 +109,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, canEdit, logout } = useAuth();
   const { currentProject, projects } = useProject();
   const currentPath = location.pathname;
   const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false);
@@ -145,7 +146,7 @@ export function AppSidebar() {
       : "hover:bg-accent hover:text-accent-foreground";
 
   const visibleItems = navigationItems.filter(item => 
-    !item.adminOnly || isAdmin
+    !item.adminOnly || canEdit
   );
 
   return (
@@ -162,6 +163,9 @@ export function AppSidebar() {
                 <p className="text-xs text-muted-foreground">Marketing Dashboard</p>
               </div>
             </div>
+            
+            {/* User Switcher */}
+            <UserSwitcher />
             
             {/* Project Switcher */}
             {isInProject && currentProject && (
@@ -246,7 +250,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {isAdmin && state !== "collapsed" && (
+        {canEdit && state !== "collapsed" && (
           <SidebarGroup>
             <SidebarGroupLabel>Admin Tools</SidebarGroupLabel>
             <SidebarGroupContent>

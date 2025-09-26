@@ -8,31 +8,54 @@ interface User {
   avatar?: string;
 }
 
+
+// Mock users for demo
+const mockUsers: User[] = [
+  {
+    id: "1",
+    name: "Admin User",
+    email: "admin@company.com",
+    role: "admin",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=admin"
+  },
+  {
+    id: "2", 
+    name: "Marketing Manager",
+    email: "manager@company.com",
+    role: "viewer",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=manager"
+  }
+];
+
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
+  isViewer: boolean;
+  canEdit: boolean;
+  canView: boolean;
   login: (user: User) => void;
   logout: () => void;
+  switchUser: (userId: string) => void;
   updateUser: (updates: Partial<User>) => void;
+  availableUsers: User[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock admin user for demo
-const mockAdminUser: User = {
-  id: "1",
-  name: "Admin User",
-  email: "admin@company.com",
-  role: "admin"
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Auto-login as admin for demo purposes
-    setUser(mockAdminUser);
+    setUser(mockUsers[0]);
   }, []);
+
+  const switchUser = (userId: string) => {
+    const selectedUser = mockUsers.find(u => u.id === userId);
+    if (selectedUser) {
+      setUser(selectedUser);
+    }
+  };
 
   const login = (userData: User) => {
     setUser(userData);
@@ -51,9 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     isAdmin: user?.role === "admin",
+    isViewer: user?.role === "viewer",
+    canEdit: user?.role === "admin",
+    canView: user !== null,
     login,
     logout,
-    updateUser
+    switchUser,
+    updateUser,
+    availableUsers: mockUsers
   };
 
   return (
