@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
 import { Layout } from "@/components/Layout";
+import LandingPage from "./pages/LandingPage";
 import Homepage from "./pages/Homepage";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import Campaigns from "./pages/Campaigns";
@@ -25,8 +26,11 @@ const App = () => (
         <AuthProvider>
           <ProjectProvider>
             <Routes>
-              {/* Main homepage */}
-              <Route path="/" element={<Layout><Homepage /></Layout>} />
+              {/* Public landing page */}
+              <Route path="/" element={<LandingPage />} />
+              
+              {/* Protected dashboard */}
+              <Route path="/dashboard" element={<Layout><Homepage /></Layout>} />
               
               {/* Global admin routes */}
               <Route path="/users" element={<Layout><UserManagement /></Layout>} />
