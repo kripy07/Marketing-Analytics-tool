@@ -19,9 +19,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const features = [
@@ -157,8 +159,12 @@ const LandingPage = () => {
               <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
               <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
               <a href="#resources" className="text-muted-foreground hover:text-foreground transition-colors">Resources</a>
-              <Button variant="ghost" onClick={() => navigate('/dashboard')}>Login</Button>
-              <Button onClick={() => navigate('/dashboard')}>Get Started</Button>
+              <Button variant="ghost" onClick={() => navigate(user ? '/dashboard' : '/auth')}>
+                {user ? 'Dashboard' : 'Login'}
+              </Button>
+              <Button onClick={() => navigate(user ? '/dashboard' : '/auth')}>
+                {user ? 'Go to Dashboard' : 'Get Started'}
+              </Button>
             </nav>
 
             {/* Mobile menu button */}
@@ -179,8 +185,12 @@ const LandingPage = () => {
                 <a href="#features" className="text-muted-foreground">Features</a>
                 <a href="#pricing" className="text-muted-foreground">Pricing</a>
                 <a href="#resources" className="text-muted-foreground">Resources</a>
-                <Button variant="ghost" onClick={() => navigate('/dashboard')} className="justify-start">Login</Button>
-                <Button onClick={() => navigate('/dashboard')} className="justify-start">Get Started</Button>
+                <Button variant="ghost" onClick={() => navigate(user ? '/dashboard' : '/auth')} className="justify-start">
+                  {user ? 'Dashboard' : 'Login'}
+                </Button>
+                <Button onClick={() => navigate(user ? '/dashboard' : '/auth')} className="justify-start">
+                  {user ? 'Go to Dashboard' : 'Get Started'}
+                </Button>
               </nav>
             </div>
           )}
@@ -220,8 +230,8 @@ const LandingPage = () => {
 
             {/* CTAs */}
             <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
-              <Button size="lg" className="text-lg px-8 py-6" onClick={() => navigate('/dashboard')}>
-                Try Free for 14 Days
+              <Button size="lg" className="text-lg px-8 py-6" onClick={() => navigate(user ? '/dashboard' : '/auth')}>
+                {user ? 'Go to Dashboard' : 'Try Free for 14 Days'}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button variant="outline" size="lg" className="text-lg px-8 py-6">
@@ -359,9 +369,9 @@ const LandingPage = () => {
                   <Button 
                     className="w-full" 
                     variant={plan.popular ? "default" : "outline"}
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate(user ? '/dashboard' : '/auth')}
                   >
-                    {plan.price === "Custom" ? "Contact Sales" : "Start Free Trial"}
+                    {plan.price === "Custom" ? "Contact Sales" : (user ? "Go to Dashboard" : "Start Free Trial")}
                   </Button>
                 </CardContent>
               </Card>

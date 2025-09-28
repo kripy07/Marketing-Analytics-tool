@@ -6,8 +6,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
 import { Layout } from "@/components/Layout";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import Homepage from "./pages/Homepage";
+import AuthPage from "./pages/AuthPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import Campaigns from "./pages/Campaigns";
 import Settings from "./pages/Settings";
@@ -29,24 +32,42 @@ const App = () => (
               {/* Public landing page */}
               <Route path="/" element={<LandingPage />} />
               
+              {/* Auth pages */}
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/onboarding" element={<OnboardingPage />} />
+              
               {/* Protected dashboard */}
-              <Route path="/dashboard" element={<Layout><Homepage /></Layout>} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Layout><Homepage /></Layout>
+                </ProtectedRoute>
+              } />
               
               {/* Global admin routes */}
-              <Route path="/users" element={<Layout><UserManagement /></Layout>} />
-              <Route path="/settings" element={<Layout><Settings /></Layout>} />
+              <Route path="/users" element={
+                <ProtectedRoute>
+                  <Layout><UserManagement /></Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Layout><Settings /></Layout>
+                </ProtectedRoute>
+              } />
               
               {/* Project-specific routes */}
               <Route path="/project/:projectId/*" element={
-                <ProjectLayout>
-                  <Routes>
-                    <Route path="dashboard" element={<ProjectDashboard />} />
-                    <Route path="campaigns" element={<Campaigns />} />
-                    <Route path="analytics" element={<ProjectDashboard />} />
-                    <Route path="reports" element={<ProjectDashboard />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </ProjectLayout>
+                <ProtectedRoute>
+                  <ProjectLayout>
+                    <Routes>
+                      <Route path="dashboard" element={<ProjectDashboard />} />
+                      <Route path="campaigns" element={<Campaigns />} />
+                      <Route path="analytics" element={<ProjectDashboard />} />
+                      <Route path="reports" element={<ProjectDashboard />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </ProjectLayout>
+                </ProtectedRoute>
               } />
               
               {/* Catch-all 404 */}
