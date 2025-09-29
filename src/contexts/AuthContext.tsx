@@ -7,6 +7,9 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  profile: any;
+  isAdmin: boolean;
+  canEdit: boolean;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -19,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -28,6 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserProfile(session.user!.id);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
 
         if (event === 'SIGNED_IN' && session?.user) {
           toast({
@@ -42,11 +54,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, [toast]);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (!error && data) {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
@@ -129,10 +160,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isAdmin = false; // Will be implemented with user roles
+  const canEdit = true; // Will be implemented with user roles
+
   const value = {
     user,
     session,
     loading,
+    profile,
+    isAdmin,
+    canEdit,
     signUp,
     signIn,
     signOut,

@@ -109,7 +109,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { user, isAdmin, canEdit, logout } = useAuth();
+  const { user, profile, isAdmin, canEdit, signOut } = useAuth();
   const { currentProject, projects } = useProject();
   const currentPath = location.pathname;
   const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false);
@@ -275,14 +275,20 @@ export function AppSidebar() {
               <Button variant="ghost" className="w-full justify-start h-auto p-2">
                 <div className="flex items-center gap-3 w-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar} />
+                    <AvatarImage src={profile?.avatar_url} />
                     <AvatarFallback>
-                      {user.name.split(' ').map(n => n[0]).join('')}
+                      {profile?.first_name?.[0] || user?.email?.[0] || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                    <p className="text-sm font-medium">
+                      {profile?.first_name && profile?.last_name 
+                        ? `${profile.first_name} ${profile.last_name}`
+                        : user?.email}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {isAdmin ? 'Admin' : 'User'}
+                    </p>
                   </div>
                   <ChevronDown className="h-4 w-4" />
                 </div>
@@ -294,7 +300,7 @@ export function AppSidebar() {
               <DropdownMenuItem>Profile Settings</DropdownMenuItem>
               <DropdownMenuItem>Notifications</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-destructive">
+              <DropdownMenuItem onClick={signOut} className="text-destructive">
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </DropdownMenuItem>
@@ -304,9 +310,9 @@ export function AppSidebar() {
         {state === "collapsed" && user && (
           <div className="flex justify-center">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={user.avatar} />
+              <AvatarImage src={profile?.avatar_url} />
               <AvatarFallback>
-                {user.name.split(' ').map(n => n[0]).join('')}
+                {profile?.first_name?.[0] || user?.email?.[0] || 'U'}
               </AvatarFallback>
             </Avatar>
           </div>

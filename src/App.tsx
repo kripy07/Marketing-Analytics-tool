@@ -15,6 +15,8 @@ import ProjectDashboard from "./pages/ProjectDashboard";
 import Campaigns from "./pages/Campaigns";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
+import { AccountSettings } from "./pages/AccountSettings";
+import { HelpSupport } from "./pages/HelpSupport";
 import NotFound from "./pages/NotFound";
 import ProjectLayout from "./components/ProjectLayout";
 
@@ -52,6 +54,16 @@ const App = () => (
               <Route path="/settings" element={
                 <ProtectedRoute>
                   <Layout><Settings /></Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/account" element={
+                <ProtectedRoute>
+                  <Layout><AccountSettings /></Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/help" element={
+                <ProtectedRoute>
+                  <Layout><HelpSupport /></Layout>
                 </ProtectedRoute>
               } />
               
