@@ -81,10 +81,9 @@ export default {
         'medium': 'var(--shadow-medium)',
         'glow': 'var(--shadow-glow)',
       },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Playfair Display', 'serif'],
       },
       keyframes: {
         "accordion-down": {
