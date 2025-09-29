@@ -22,6 +22,7 @@ import ProjectLayout from "./components/ProjectLayout";
 
 const queryClient = new QueryClient();
 
+// Force refresh for module loading
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

@@ -73,6 +73,12 @@ const globalNavigationItems = [
     url: "/settings",
     icon: Settings,
     adminOnly: true
+  },
+  {
+    title: "Help & Support",
+    url: "/help",
+    icon: Bell,
+    adminOnly: false
   }
 ];
 
@@ -297,8 +303,13 @@ export function AppSidebar() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile Settings</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <NavLink to="/account">Profile Settings</NavLink>
+              </DropdownMenuItem>
               <DropdownMenuItem>Notifications</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <NavLink to="/help">Help & Support</NavLink>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut} className="text-destructive">
                 <LogOut className="h-4 w-4 mr-2" />
