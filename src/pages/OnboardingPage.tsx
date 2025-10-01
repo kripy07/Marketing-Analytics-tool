@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const ONBOARDING_STEPS = [
 export default function OnboardingPage() {
   const { user, loading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
@@ -55,7 +56,7 @@ export default function OnboardingPage() {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching profile:', error);
@@ -63,11 +64,6 @@ export default function OnboardingPage() {
     }
 
     setProfile(data);
-    
-    // If onboarding is already completed, redirect to dashboard
-    if (data?.onboarding_completed) {
-      return <Navigate to="/dashboard" replace />;
-    }
 
     // Pre-fill form data if available
     if (data?.company_name) {
@@ -160,7 +156,7 @@ export default function OnboardingPage() {
       });
 
       // Navigate to dashboard
-      window.location.href = '/dashboard';
+      navigate('/dashboard', { replace: true });
       
     } catch (error: any) {
       console.error('Error completing onboarding:', error);

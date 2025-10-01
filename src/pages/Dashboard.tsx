@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,15 @@ import {
   Bell
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [metrics, setMetrics] = useState({
     totalSpend: 0,
     totalConversions: 0,
@@ -37,6 +40,25 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Redirect to auth if not logged in
+  if (!user && !loading) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Redirect to onboarding if not completed
+  if (profile !== null && !profile?.onboarding_completed) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  // Show loading while checking profile
+  if (isLoadingProfile || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   const fetchData = async () => {
     if (!user) return;
 
@@ -46,9 +68,10 @@ export default function Dashboard() {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       setProfile(profileData);
+      setIsLoadingProfile(false);
 
       // Fetch user's organization
       const { data: userRoleData } = await supabase

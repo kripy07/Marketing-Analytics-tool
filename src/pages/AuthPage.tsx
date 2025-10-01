@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
-  const { user, loading, signUp, signIn, signInWithGoogle } = useAuth();
+  const { user, loading, signUp, signIn, signInWithGoogle, profile } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,7 +24,12 @@ export default function AuthPage() {
 
   // Redirect if already authenticated
   if (user && !loading) {
-    return <Navigate to="/dashboard" replace />;
+    // Check if onboarding is completed
+    if (profile?.onboarding_completed) {
+      return <Navigate to="/dashboard" replace />;
+    } else if (profile) {
+      return <Navigate to="/onboarding" replace />;
+    }
   }
 
   if (loading) {

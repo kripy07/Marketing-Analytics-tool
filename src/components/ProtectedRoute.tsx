@@ -30,9 +30,9 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (!error) {
+      if (!error && data) {
         setProfile(data);
       }
     } catch (error) {
