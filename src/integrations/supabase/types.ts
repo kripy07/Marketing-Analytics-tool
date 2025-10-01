@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_account_secrets: {
+        Row: {
+          ad_account_id: string
+          created_at: string | null
+          encrypted_access_token: string | null
+          encrypted_refresh_token: string | null
+          encryption_key: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          ad_account_id: string
+          created_at?: string | null
+          encrypted_access_token?: string | null
+          encrypted_refresh_token?: string | null
+          encryption_key?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          ad_account_id?: string
+          created_at?: string | null
+          encrypted_access_token?: string | null
+          encrypted_refresh_token?: string | null
+          encryption_key?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_account_secrets_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: true
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_accounts: {
         Row: {
           access_token: string | null
@@ -496,7 +534,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_ad_account_tokens: {
+        Args: { p_ad_account_id: string }
+        Returns: {
+          access_token: string
+          refresh_token: string
+        }[]
+      }
+      store_ad_account_tokens: {
+        Args: {
+          p_access_token: string
+          p_ad_account_id: string
+          p_refresh_token: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       alert_condition:
