@@ -160,8 +160,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const isAdmin = false; // Will be implemented with user roles
-  const canEdit = true; // Will be implemented with user roles
+  // Check user role from user_roles table
+  const [userRole, setUserRole] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (user) {
+      fetchUserRole();
+    } else {
+      setUserRole(null);
+    }
+  }, [user]);
+
+  const fetchUserRole = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setUserRole(data.role);
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
+
+  const isAdmin = userRole === 'admin';
+  const canEdit = userRole === 'admin' || userRole === 'editor';
 
   const value = {
     user,
