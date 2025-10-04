@@ -54,7 +54,6 @@ export type Database = {
       }
       ad_accounts: {
         Row: {
-          access_token: string | null
           account_id: string
           account_name: string
           created_at: string | null
@@ -64,11 +63,9 @@ export type Database = {
           last_sync_at: string | null
           organization_id: string | null
           platform: Database["public"]["Enums"]["platform_type"]
-          refresh_token: string | null
           updated_at: string | null
         }
         Insert: {
-          access_token?: string | null
           account_id: string
           account_name: string
           created_at?: string | null
@@ -78,11 +75,9 @@ export type Database = {
           last_sync_at?: string | null
           organization_id?: string | null
           platform: Database["public"]["Enums"]["platform_type"]
-          refresh_token?: string | null
           updated_at?: string | null
         }
         Update: {
-          access_token?: string | null
           account_id?: string
           account_name?: string
           created_at?: string | null
@@ -92,7 +87,6 @@ export type Database = {
           last_sync_at?: string | null
           organization_id?: string | null
           platform?: Database["public"]["Enums"]["platform_type"]
-          refresh_token?: string | null
           updated_at?: string | null
         }
         Relationships: [
