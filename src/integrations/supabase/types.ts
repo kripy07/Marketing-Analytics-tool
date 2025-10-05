@@ -535,6 +535,16 @@ export type Database = {
           refresh_token: string
         }[]
       }
+      get_user_organization_roles: {
+        Args: { p_organization_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }[]
+      }
       store_ad_account_tokens: {
         Args: {
           p_access_token: string
@@ -542,6 +552,13 @@ export type Database = {
           p_refresh_token: string
         }
         Returns: string
+      }
+      user_has_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
