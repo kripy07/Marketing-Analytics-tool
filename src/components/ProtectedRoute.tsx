@@ -54,6 +54,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
     return <Navigate to="/auth" replace />;
   }
 
+  // Skip onboarding check - users go straight to dashboard
   if (requireOnboarding && profile && !profile.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;
   }

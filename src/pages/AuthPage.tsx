@@ -24,10 +24,11 @@ export default function AuthPage() {
 
   // Redirect if already authenticated
   if (user && !loading) {
-    // Check if onboarding is completed
+    // Check if onboarding is completed - if not, send to onboarding
     if (profile?.onboarding_completed) {
       return <Navigate to="/dashboard" replace />;
     } else if (profile) {
+      // New users need to complete simple setup
       return <Navigate to="/onboarding" replace />;
     }
   }

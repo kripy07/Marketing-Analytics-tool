@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, BarChart3, TrendingUp, DollarSign, Target, FolderOpen, Users } from "lucide-react";
+import { DataImport } from "@/components/DataImport";
 
 export default function Dashboard() {
   const { user, profile, isAdmin } = useAuth();
@@ -223,6 +224,14 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Data Import Section - Show when user has organizations */}
+      {organizations.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Import Campaign Data</h2>
+          <DataImport />
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
