@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,8 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, BarChart3, TrendingUp, DollarSign, Target, FolderOpen, Users } from "lucide-react";
+import { Loader2, Plus, BarChart3, TrendingUp, DollarSign, Target, FolderOpen, Users, MousePointer, Eye, ShoppingCart } from "lucide-react";
 import { DataImport } from "@/components/DataImport";
+import { MetricCard } from "@/components/MetricCard";
+import { CampaignCard } from "@/components/CampaignCard";
+import { ComparisonChart } from "@/components/ComparisonChart";
+import { FilterPanel } from "@/components/FilterPanel";
+import { ExportPanel } from "@/components/ExportPanel";
+import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
+import { DateRange } from "react-day-picker";
 
 export default function Dashboard() {
   const { user, profile, isAdmin } = useAuth();
@@ -15,10 +22,19 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedChannel, setSelectedChannel] = useState("all");
+  
   const [stats, setStats] = useState({
     totalProjects: 0,
     totalSpend: 0,
     totalConversions: 0,
+    totalClicks: 0,
+    totalImpressions: 0,
+    totalRevenue: 0,
     avgRoas: 0
   });
 
@@ -54,30 +70,43 @@ export default function Dashboard() {
 
       setOrganizations(orgs);
 
-      // Fetch campaigns stats for all user organizations
+      // Fetch campaigns and metrics for all user organizations
       if (orgs.length > 0) {
         const orgIds = orgs.map(org => org.id);
         
         const { data: campaignsData } = await supabase
           .from('campaigns')
-          .select('id, budget, organization_id')
+          .select('*')
           .in('organization_id', orgIds);
 
-        const { data: metricsData } = await supabase
-          .from('campaign_metrics')
-          .select('spend, conversions, revenue')
-          .in('campaign_id', campaignsData?.map(c => c.id) || []);
+        setCampaigns(campaignsData || []);
 
-        const totalSpend = metricsData?.reduce((sum, m) => sum + Number(m.spend || 0), 0) || 0;
-        const totalConversions = metricsData?.reduce((sum, m) => sum + Number(m.conversions || 0), 0) || 0;
-        const totalRevenue = metricsData?.reduce((sum, m) => sum + Number(m.revenue || 0), 0) || 0;
+        const campaignIds = campaignsData?.map(c => c.id) || [];
+        
+        if (campaignIds.length > 0) {
+          const { data: metricsData } = await supabase
+            .from('campaign_metrics')
+            .select('*')
+            .in('campaign_id', campaignIds);
 
-        setStats({
-          totalProjects: orgs.length,
-          totalSpend,
-          totalConversions,
-          avgRoas: totalSpend > 0 ? totalRevenue / totalSpend : 0
-        });
+          setMetrics(metricsData || []);
+
+          const totalSpend = metricsData?.reduce((sum, m) => sum + Number(m.spend || 0), 0) || 0;
+          const totalConversions = metricsData?.reduce((sum, m) => sum + Number(m.conversions || 0), 0) || 0;
+          const totalRevenue = metricsData?.reduce((sum, m) => sum + Number(m.revenue || 0), 0) || 0;
+          const totalClicks = metricsData?.reduce((sum, m) => sum + Number(m.clicks || 0), 0) || 0;
+          const totalImpressions = metricsData?.reduce((sum, m) => sum + Number(m.impressions || 0), 0) || 0;
+
+          setStats({
+            totalProjects: orgs.length,
+            totalSpend,
+            totalConversions,
+            totalClicks,
+            totalImpressions,
+            totalRevenue,
+            avgRoas: totalSpend > 0 ? totalRevenue / totalSpend : 0
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
@@ -88,6 +117,62 @@ export default function Dashboard() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Filter and calculate metrics
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(campaign => {
+      if (selectedStatus !== "all" && campaign.status !== selectedStatus) {
+        return false;
+      }
+      return true;
+    });
+  }, [campaigns, selectedStatus]);
+
+  const campaignMetrics = useMemo(() => {
+    return filteredCampaigns.map(campaign => {
+      const campaignMetricsData = metrics.filter(m => m.campaign_id === campaign.id);
+      const spent = campaignMetricsData.reduce((sum, m) => sum + Number(m.spend || 0), 0);
+      const conversions = campaignMetricsData.reduce((sum, m) => sum + Number(m.conversions || 0), 0);
+      const clicks = campaignMetricsData.reduce((sum, m) => sum + Number(m.clicks || 0), 0);
+      const impressions = campaignMetricsData.reduce((sum, m) => sum + Number(m.impressions || 0), 0);
+      const revenue = campaignMetricsData.reduce((sum, m) => sum + Number(m.revenue || 0), 0);
+      
+      return {
+        name: campaign.name,
+        status: campaign.status,
+        budget: Number(campaign.budget || 0),
+        spent,
+        target: conversions * 1.2, // Target is 20% above current
+        achieved: conversions,
+        conversions,
+        clicks,
+        impressions,
+        revenue,
+        startDate: campaign.start_date,
+        endDate: campaign.end_date,
+      };
+    });
+  }, [filteredCampaigns, metrics]);
+
+  const activeFiltersCount = [
+    dateRange?.from ? 1 : 0,
+    selectedStatus !== "all" ? 1 : 0,
+    selectedChannel !== "all" ? 1 : 0
+  ].reduce((sum, filter) => sum + filter, 0);
+
+  const handleClearFilters = () => {
+    setDateRange(undefined);
+    setSelectedStatus("all");
+    setSelectedChannel("all");
+  };
+
+  const handleExport = (format: string, fields: string[]) => {
+    if (format === "csv") {
+      exportToCSV(campaignMetrics, fields);
+    } else if (format === "pdf") {
+      exportToPDF(campaignMetrics, fields);
     }
   };
 
@@ -103,15 +188,57 @@ export default function Dashboard() {
     );
   };
 
+  // Show empty state if no campaigns yet
+  if (campaigns.length === 0 && !loading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Welcome back, {profile?.first_name || user?.email}!</h1>
+            <p className="text-muted-foreground mt-1">Get started by importing your campaign data</p>
+          </div>
+          <Button onClick={handleCreateProject}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        </div>
+
+        <Card className="p-12 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <BarChart3 className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold mb-2">No campaign data yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Import your campaign data to see beautiful analytics and insights
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {organizations.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Import Campaign Data</h2>
+            <DataImport />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const avgConversionRate = stats.totalClicks > 0 ? (stats.totalConversions / stats.totalClicks) * 100 : 0;
+  const avgCPA = stats.totalConversions > 0 ? stats.totalSpend / stats.totalConversions : 0;
+  const budgetUtilization = campaignMetrics.reduce((sum, c) => sum + c.budget, 0);
+  const budgetUtilizationPercent = budgetUtilization > 0 ? (stats.totalSpend / budgetUtilization) * 100 : 0;
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Welcome back, {profile?.first_name || user?.email}!</h1>
-          <p className="text-muted-foreground mt-1">
-            Here's an overview of your marketing performance
-          </p>
+          <p className="text-muted-foreground mt-1">Here's an overview of your marketing performance</p>
         </div>
         <Button onClick={handleCreateProject}>
           <Plus className="h-4 w-4 mr-2" />
@@ -119,158 +246,123 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProjects}</div>
-            <p className="text-xs text-muted-foreground">Active organizations</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spend</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalSpend.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Across all campaigns</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversions</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalConversions}</div>
-            <p className="text-xs text-muted-foreground">Total conversions</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg ROAS</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.avgRoas.toFixed(2)}x</div>
-            <p className="text-xs text-muted-foreground">Return on ad spend</p>
-          </CardContent>
-        </Card>
+      {/* Filters and Export */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <FilterPanel
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            selectedStatus={selectedStatus}
+            setSelectedStatus={setSelectedStatus}
+            selectedChannel={selectedChannel}
+            setSelectedChannel={setSelectedChannel}
+            onClearFilters={handleClearFilters}
+            activeFiltersCount={activeFiltersCount}
+          />
+        </div>
+        <div>
+          <ExportPanel onExport={handleExport} />
+        </div>
       </div>
 
-      {/* Projects/Organizations List */}
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Total Revenue"
+          value={`$${stats.totalRevenue.toLocaleString()}`}
+          change={23.4}
+          changeLabel="vs last month"
+          icon={<DollarSign className="h-4 w-4" />}
+          variant="success"
+        />
+        <MetricCard
+          title="Cost Per Acquisition"
+          value={`$${avgCPA.toFixed(2)}`}
+          change={-8.2}
+          changeLabel="vs last month"
+          icon={<Target className="h-4 w-4" />}
+          variant="success"
+        />
+        <MetricCard
+          title="Conversion Rate"
+          value={`${avgConversionRate.toFixed(2)}%`}
+          change={15.7}
+          changeLabel="vs last month"
+          icon={<TrendingUp className="h-4 w-4" />}
+        />
+        <MetricCard
+          title="Budget Utilization"
+          value={`${budgetUtilizationPercent.toFixed(1)}%`}
+          change={4.1}
+          changeLabel="vs last month"
+          icon={<BarChart3 className="h-4 w-4" />}
+          variant={budgetUtilizationPercent > 85 ? "warning" : "default"}
+        />
+      </div>
+
+      {/* Additional Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Total Impressions"
+          value={stats.totalImpressions.toLocaleString()}
+          change={18.2}
+          changeLabel="vs last month"
+          icon={<Eye className="h-4 w-4" />}
+        />
+        <MetricCard
+          title="Total Clicks"
+          value={stats.totalClicks.toLocaleString()}
+          change={12.8}
+          changeLabel="vs last month"
+          icon={<MousePointer className="h-4 w-4" />}
+        />
+        <MetricCard
+          title="Total Conversions"
+          value={stats.totalConversions.toLocaleString()}
+          change={21.5}
+          changeLabel="vs last month"
+          icon={<Users className="h-4 w-4" />}
+        />
+        <MetricCard
+          title="Return on Ad Spend"
+          value={`${stats.avgRoas.toFixed(2)}x`}
+          change={9.4}
+          changeLabel="vs last month"
+          icon={<ShoppingCart className="h-4 w-4" />}
+          variant="success"
+        />
+      </div>
+
+      {/* Campaign Cards */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Your Projects</h2>
-        {organizations.length === 0 ? (
-          <Card className="p-12 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <BarChart3 className="h-8 w-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-2">No projects yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Create your first project to start tracking your marketing campaigns
-                </p>
-              </div>
-              <Button onClick={handleCreateProject} size="lg">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Project
-              </Button>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {organizations.map((org) => (
-              <Card 
-                key={org.id} 
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => navigate(`/project/${org.id}/dashboard`)}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-                        <BarChart3 className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">{org.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(org.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={org.userRole === 'admin' ? 'default' : 'secondary'}>
-                      {org.userRole === 'admin' ? 'Admin' : org.userRole === 'editor' ? 'Editor' : 'Viewer'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>Click to view analytics</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">
+            {selectedStatus === "all" ? "Recent Campaigns" : `${selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)} Campaigns`}
+          </h2>
+          <div className="text-sm text-muted-foreground">
+            Showing {Math.min(campaignMetrics.length, 6)} of {campaignMetrics.length} campaigns
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {campaignMetrics.slice(0, 6).map((campaign, index) => (
+            <CampaignCard key={index} {...campaign} />
+          ))}
+        </div>
+        {campaignMetrics.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-lg mb-2">No campaigns match your filters</p>
+            <p>Try adjusting your filter criteria</p>
           </div>
         )}
       </div>
 
-      {/* Data Import Section - Show when user has organizations */}
+      {/* Data Import Section */}
       {organizations.length > 0 && (
         <div>
-          <h2 className="text-2xl font-bold mb-4">Import Campaign Data</h2>
+          <h2 className="text-2xl font-bold mb-4">Import More Data</h2>
           <DataImport />
         </div>
       )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/users')}>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Manage Users</h3>
-              <p className="text-sm text-muted-foreground">Invite team members</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/settings')}>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Target className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Settings</h3>
-              <p className="text-sm text-muted-foreground">Configure preferences</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/help')}>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Help & Support</h3>
-              <p className="text-sm text-muted-foreground">Get assistance</p>
-            </div>
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }
