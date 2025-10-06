@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { QuickDataEntry } from "./QuickDataEntry";
+import { supabase } from "@/integrations/supabase/client";
+import { parseExcelOrCSV, importCampaignsToDatabase, downloadTemplate } from "@/utils/importUtils";
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -17,15 +19,35 @@ import {
   Download,
   CheckCircle,
   AlertCircle,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react";
 
 export function DataImport() {
   const { toast } = useToast();
-  const { canEdit } = useAuth();
+  const { canEdit, user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [manualData, setManualData] = useState('');
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchOrganization();
+  }, [user]);
+
+  const fetchOrganization = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      setOrganizationId(data.organization_id);
+    }
+  };
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
@@ -38,18 +60,62 @@ export function DataImport() {
       });
       return;
     }
+
+    if (!organizationId) {
+      toast({
+        title: "Error",
+        description: "No organization found. Please complete onboarding first.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setUploading(true);
     
-    // Simulate file processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    toast({
-      title: "File Uploaded Successfully",
-      description: `${file.name} has been processed and imported.`,
-    });
-    
-    setUploading(false);
+    try {
+      // Parse the file
+      const data = await parseExcelOrCSV(file);
+      
+      if (data.length === 0) {
+        toast({
+          title: "No Data Found",
+          description: "The file appears to be empty or in an incorrect format.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Import to database
+      const result = await importCampaignsToDatabase(data, organizationId);
+      
+      if (result.success > 0) {
+        toast({
+          title: "Import Successful",
+          description: `Successfully imported ${result.success} campaign(s). ${result.failed > 0 ? `${result.failed} failed.` : ''}`,
+        });
+
+        // Show errors if any
+        if (result.errors.length > 0) {
+          console.error('Import errors:', result.errors);
+        }
+      } else {
+        toast({
+          title: "Import Failed",
+          description: "No campaigns were imported. Please check your file format.",
+          variant: "destructive"
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('File upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to process file. Please check the format and try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleGoogleSheetsImport = () => {
@@ -175,7 +241,14 @@ export function DataImport() {
                   />
                   <Label htmlFor="file-upload">
                     <Button variant="outline" className="cursor-pointer" disabled={uploading}>
-                      {uploading ? "Processing..." : "Choose File"}
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Choose File"
+                      )}
                     </Button>
                   </Label>
                 </div>
@@ -189,7 +262,7 @@ export function DataImport() {
                 </div>
               </div>
               
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={downloadTemplate}>
                 <Download className="h-4 w-4 mr-2" />
                 Download Template
               </Button>

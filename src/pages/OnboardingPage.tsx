@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { parseExcelOrCSV, importCampaignsToDatabase, downloadTemplate } from "@/utils/importUtils";
 import { Upload, FileSpreadsheet, Sheet, Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
@@ -16,6 +17,9 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [companyName, setCompanyName] = useState("");
+  const [createdOrgId, setCreatedOrgId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -113,13 +117,13 @@ export default function OnboardingPage() {
 
       if (attributionError) throw attributionError;
 
+      // Store the created organization ID for imports
+      setCreatedOrgId(orgData.id);
+
       toast({
         title: "Welcome!",
-        description: "Your account has been set up. You can now import your data.",
+        description: "Your account has been set up. You can now import your data or skip to dashboard.",
       });
-
-      // Navigate to dashboard
-      navigate('/dashboard', { replace: true });
       
     } catch (error: any) {
       console.error('Error completing setup:', error);
@@ -133,18 +137,73 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleFileImport = (type: 'excel' | 'csv') => {
-    toast({
-      title: "Coming Soon",
-      description: `${type === 'excel' ? 'Excel' : 'CSV'} import will be available after setup.`,
-    });
+  const handleFileImport = async (file: File) => {
+    if (!createdOrgId) {
+      toast({
+        title: "Please Complete Setup First",
+        description: "Click 'Get Started' to set up your account before importing data.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setImporting(true);
+    
+    try {
+      const data = await parseExcelOrCSV(file);
+      
+      if (data.length === 0) {
+        toast({
+          title: "No Data Found",
+          description: "The file appears to be empty or in an incorrect format.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const result = await importCampaignsToDatabase(data, createdOrgId);
+      
+      if (result.success > 0) {
+        toast({
+          title: "Import Successful",
+          description: `Imported ${result.success} campaign(s). Redirecting to dashboard...`,
+        });
+
+        // Navigate after successful import
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1500);
+      } else {
+        toast({
+          title: "Import Failed",
+          description: "No campaigns were imported. Please check your file format.",
+          variant: "destructive"
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to process file.",
+        variant: "destructive"
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleGoogleSheets = () => {
     toast({
-      title: "Coming Soon",
-      description: "Google Sheets integration will be available after setup.",
+      title: "Google Sheets Integration",
+      description: "This feature requires additional OAuth setup. Use Excel/CSV for now, or add data from the dashboard.",
     });
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   return (
@@ -176,21 +235,31 @@ export default function OnboardingPage() {
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileImport(file);
+                  }}
+                  className="hidden"
+                />
                 <Button
                   variant="outline"
                   className="h-24 flex-col gap-2"
-                  onClick={() => handleFileImport('excel')}
-                  disabled={isSubmitting}
+                  onClick={triggerFileInput}
+                  disabled={isSubmitting || importing || !createdOrgId}
                 >
                   <FileSpreadsheet className="h-8 w-8" />
-                  <span>Import Excel</span>
+                  <span>{importing ? "Importing..." : "Import Excel/CSV"}</span>
                 </Button>
                 
                 <Button
                   variant="outline"
                   className="h-24 flex-col gap-2"
                   onClick={handleGoogleSheets}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !createdOrgId}
                 >
                   <Sheet className="h-8 w-8" />
                   <span>Google Sheets</span>
@@ -199,11 +268,11 @@ export default function OnboardingPage() {
                 <Button
                   variant="outline"
                   className="h-24 flex-col gap-2"
-                  onClick={() => handleFileImport('csv')}
+                  onClick={downloadTemplate}
                   disabled={isSubmitting}
                 >
                   <Upload className="h-8 w-8" />
-                  <span>Upload CSV</span>
+                  <span>Download Template</span>
                 </Button>
               </div>
 
@@ -213,17 +282,29 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-between">
+            {createdOrgId && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/dashboard', { replace: true })}
+                size="lg"
+              >
+                Skip to Dashboard
+              </Button>
+            )}
             <Button
               onClick={handleComplete}
-              disabled={isSubmitting || !companyName.trim()}
+              disabled={isSubmitting || !companyName.trim() || createdOrgId !== null}
               size="lg"
+              className="ml-auto"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Setting up...
                 </>
+              ) : createdOrgId ? (
+                "✓ Setup Complete"
               ) : (
                 "Get Started"
               )}
