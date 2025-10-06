@@ -545,6 +545,12 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_organizations: {
+        Args: { p_user_id: string }
+        Returns: {
+          organization_id: string
+        }[]
+      }
       store_ad_account_tokens: {
         Args: {
           p_access_token: string
@@ -558,6 +564,10 @@ export type Database = {
           p_role: Database["public"]["Enums"]["user_role"]
           p_user_id: string
         }
+        Returns: boolean
+      }
+      user_in_organization: {
+        Args: { p_organization_id: string; p_user_id: string }
         Returns: boolean
       }
     }
