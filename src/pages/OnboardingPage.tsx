@@ -72,30 +72,7 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
     
     try {
-      // Create organization
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: companyName,
-          settings: {}
-        })
-        .select()
-        .single();
-
-      if (orgError) throw orgError;
-
-      // Create user role as admin
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user!.id,
-          organization_id: orgData.id,
-          role: 'admin'
-        });
-
-      if (roleError) throw roleError;
-
-      // Update profile
+      // Update profile first
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -106,6 +83,35 @@ export default function OnboardingPage() {
 
       if (profileError) throw profileError;
 
+      // Create organization
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: companyName,
+          settings: {}
+        })
+        .select()
+        .single();
+
+      if (orgError) {
+        console.error('Organization creation error:', orgError);
+        throw new Error(`Failed to create organization: ${orgError.message}`);
+      }
+
+      // Create user role as admin
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: user!.id,
+          organization_id: orgData.id,
+          role: 'admin'
+        });
+
+      if (roleError) {
+        console.error('Role creation error:', roleError);
+        throw new Error(`Failed to create user role: ${roleError.message}`);
+      }
+
       // Create attribution settings
       const { error: attributionError } = await supabase
         .from('attribution_settings')
@@ -115,7 +121,10 @@ export default function OnboardingPage() {
           lookback_window_days: 30,
         });
 
-      if (attributionError) throw attributionError;
+      if (attributionError) {
+        console.error('Attribution settings error:', attributionError);
+        // Don't fail onboarding if attribution settings fail
+      }
 
       // Store the created organization ID for imports
       setCreatedOrgId(orgData.id);
