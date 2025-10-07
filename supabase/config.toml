@@ -1,1 +1,4 @@
 project_id = "drwroajryewerflpjvin"
+
+[functions.process-csv-import]
+verify_jwt = true

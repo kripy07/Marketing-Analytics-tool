@@ -1,20 +1,23 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { CACHE_CONFIGS } from "@/hooks/useCache";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, BarChart3, TrendingUp, DollarSign, Target, FolderOpen, Users, MousePointer, Eye, ShoppingCart } from "lucide-react";
-import { DataImport } from "@/components/DataImport";
+import { Loader2, Plus, BarChart3, TrendingUp, DollarSign, Target, Users, MousePointer, Eye, ShoppingCart } from "lucide-react";
 import { MetricCard } from "@/components/MetricCard";
 import { CampaignCard } from "@/components/CampaignCard";
-import { ComparisonChart } from "@/components/ComparisonChart";
-import { FilterPanel } from "@/components/FilterPanel";
-import { ExportPanel } from "@/components/ExportPanel";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import { DateRange } from "react-day-picker";
+
+// Lazy load heavy components for better initial load performance
+const DataImport = lazy(() => import("@/components/DataImport").then(m => ({ default: m.DataImport })));
+const ComparisonChart = lazy(() => import("@/components/ComparisonChart").then(m => ({ default: m.ComparisonChart })));
+const FilterPanel = lazy(() => import("@/components/FilterPanel").then(m => ({ default: m.FilterPanel })));
+const ExportPanel = lazy(() => import("@/components/ExportPanel").then(m => ({ default: m.ExportPanel })));
 
 export default function Dashboard() {
   const { user, profile, isAdmin } = useAuth();
@@ -220,7 +223,9 @@ export default function Dashboard() {
         {organizations.length > 0 && (
           <div>
             <h2 className="text-2xl font-bold mb-4">Import Campaign Data</h2>
-            <DataImport />
+            <Suspense fallback={<Card><CardContent className="p-6"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>}>
+              <DataImport />
+            </Suspense>
           </div>
         )}
       </div>
@@ -249,19 +254,23 @@ export default function Dashboard() {
       {/* Filters and Export */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <FilterPanel
-            dateRange={dateRange}
-            setDateRange={setDateRange}
-            selectedStatus={selectedStatus}
-            setSelectedStatus={setSelectedStatus}
-            selectedChannel={selectedChannel}
-            setSelectedChannel={setSelectedChannel}
-            onClearFilters={handleClearFilters}
-            activeFiltersCount={activeFiltersCount}
-          />
+          <Suspense fallback={<Card><CardContent className="p-6"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>}>
+            <FilterPanel
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              selectedStatus={selectedStatus}
+              setSelectedStatus={setSelectedStatus}
+              selectedChannel={selectedChannel}
+              setSelectedChannel={setSelectedChannel}
+              onClearFilters={handleClearFilters}
+              activeFiltersCount={activeFiltersCount}
+            />
+          </Suspense>
         </div>
         <div>
-          <ExportPanel onExport={handleExport} />
+          <Suspense fallback={<Card><CardContent className="p-6"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>}>
+            <ExportPanel onExport={handleExport} />
+          </Suspense>
         </div>
       </div>
 
@@ -360,7 +369,9 @@ export default function Dashboard() {
       {organizations.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold mb-4">Import More Data</h2>
-          <DataImport />
+          <Suspense fallback={<Card><CardContent className="p-6"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>}>
+            <DataImport />
+          </Suspense>
         </div>
       )}
     </div>

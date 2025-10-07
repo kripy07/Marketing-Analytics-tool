@@ -55,20 +55,42 @@ export async function importCampaignsToDatabase(
   data: CampaignImportRow[],
   organizationId: string
 ): Promise<{ success: number; failed: number; errors: string[] }> {
+  // For large imports (>100 rows), use background processing via Edge Function
+  if (data.length > 100) {
+    try {
+      const { data: result, error } = await supabase.functions.invoke('process-csv-import', {
+        body: {
+          campaigns: data,
+          organizationId,
+        },
+      });
+
+      if (error) throw error;
+      
+      return {
+        success: result.success || 0,
+        failed: result.errors || 0,
+        errors: result.errorMessages || [],
+      };
+    } catch (error: any) {
+      console.error('Background import failed, falling back to direct import:', error);
+      // Fall through to direct import on error
+    }
+  }
+
+  // Direct import for small datasets (<= 100 rows)
   let success = 0;
   let failed = 0;
   const errors: string[] = [];
 
   for (const row of data) {
     try {
-      // Validate required fields
       if (!row.name) {
         errors.push(`Row skipped: Campaign name is required`);
         failed++;
         continue;
       }
 
-      // Insert or update campaign
       const campaignData: any = {
         organization_id: organizationId,
         name: row.name,
@@ -97,7 +119,6 @@ export async function importCampaignsToDatabase(
         continue;
       }
 
-      // If we have metrics data, insert it
       if (campaign && (row.spend || row.clicks || row.impressions || row.conversions || row.revenue)) {
         const metricsData = {
           campaign_id: campaign.id,
